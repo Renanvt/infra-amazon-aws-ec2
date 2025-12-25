@@ -9,8 +9,9 @@
 
 # Inicia o Swarm
 
-docker swarm init --advertise-addr=000000
-
+#docker swarm init --advertise-addr={{ip_externo}}
+## “Se o IP público vem por NAT(Google Cloud) → nunca usar no Swarm. Deixe como padrão(usando o ip interno)”
+##“Se o IP público é direto na interface → pode funcionar, mas evite”
 ##########################
 # Etapa 2
 #

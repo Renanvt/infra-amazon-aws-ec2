@@ -41,7 +41,7 @@ services:
       # Define o Tipo de Banco de Dados para Postgres
       - DB_TYPE=postgresdb
       # Configura o Nome do Banco de Dados
-      - DB_POSTGRESDB_DATABASE=n8n_queue
+      - DB_POSTGRESDB_DATABASE=n8n
       # Configura o Host do Banco de Dados
       - DB_POSTGRESDB_HOST=postgres
       # Configura a Porta do Banco de Dados

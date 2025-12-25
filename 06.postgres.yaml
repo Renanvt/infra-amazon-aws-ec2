@@ -4,7 +4,7 @@ services:
   # definição dos Serviços
   postgres:
     # imagem do postgres
-    image: postgres:16
+    image: postgres:18
     # Define o Hostname
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # configura a rede do serviço
@@ -30,8 +30,10 @@ services:
     environment:
       # Define a senha do usuario postgres
       - POSTGRES_PASSWORD=SENHA
-      # Fix para a versão 16.1 do postgres
+      # Fix para a versão 16.1 do postgres (Mantido para compatibilidade, verificar necessidade no 18)
       - POSTGRES_INITDB_ARGS="--auth-host=scram-sha-256"
+      # Garante que os dados sejam salvos no caminho mapeado pelo volume (Padrão mudou na v18)
+      - PGDATA=/var/lib/postgresql/data
     # define o modo de deploy do container
     deploy:
       # configura o modo de deploy do serviço do postgres

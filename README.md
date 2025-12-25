@@ -1,22 +1,69 @@
-# 🚀 Infraestrutura E-commerce Alob Express (Modernizada)
+<!--
+ alobexpress-setup (c) by Jonatan Renan
+ 
+ alobexpress-setup is licensed under a
+ Creative Commons Attribution 4.0 International License.
+-->
 
-Este repositório contém a definição de infraestrutura como código (IaC) baseada em **Docker Swarm** para o ecossistema de automação e inteligência artificial da Alob Express. A arquitetura foi otimizada para alta performance utilizando 2 nós (VMs) com 8GB de RAM cada, separando cargas de trabalho de IA e Automação.
+<p align="center">
+  <a href="" rel="noopener">
+ <img width=200px height=200px src="https://i.imgur.com/FxL5qM0.jpg" alt="Bot logo"></a>
+</p>
 
-## 📋 Visão Geral da Arquitetura
+<h2 align="center">INFRAESTRUTURA ALOB EXPRESS (MULTI-CLOUD)</h2>
+<h3 align="center">AWS & Google Cloud | Docker Swarm | N8N | Traefik | Portainer</h3>
 
-A infraestrutura é dividida em dois nós principais no Google Cloud (GCP):
-1.  **Manager Node (VM 1):** Hospeda a infraestrutura central (Traefik, Portainer, Bancos de Dados) e o stack de Automação (n8n, Evolution API).
-2.  **Worker Node (VM 2):** Dedicado exclusivamente ao stack de Inteligência Artificial (Dify), garantindo que o processamento pesado de LLMs não impacte as automações críticas.
+<div align="center">
+
+[![Status](https://img.shields.io/badge/status-active-success.svg)]()
+[![Platform](https://img.shields.io/badge/cloud-AWS%20%7C%20GCP-orange.svg)]()
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
+
+</div>
+
+---
+
+<p align="center"> 🤖 Infraestrutura como Código (IaC) moderna e unificada para automação de alta performance. 🤖
+    <br> 
+</p>
+
+# 📋 Índice
+
+- [Visão Geral e Arquitetura](#-visão-geral-e-arquitetura)
+- [Preparação da Nuvem (Escolha a sua)](#-preparação-da-nuvem)
+  - [Opção A: Amazon AWS](#opção-a-amazon-aws)
+  - [Opção B: Google Cloud Platform (GCP)](#opção-b-google-cloud-platform-gcp)
+- [Instalação Automatizada](#-instalação-automatizada)
+- [Pós-Instalação e Configuração](#-pós-instalação-e-configuração)
+  - [DNS (Cloudflare)](#dns-cloudflare)
+  - [Criar Banco de Dados N8N](#criar-banco-de-dados-n8n-obrigatório)
+  - [Configurar CORS (Evolution API)](#-configurar-cors-para-evolution-api)
+- [Stack Tecnológica](#-stack-tecnológica)
+- [Custos e Otimização](#-custos-e-otimização)
+  - [AWS (Free Tier & Projeções)](#aws-free-tier--projeções)
+  - [Google Cloud (Estimativas)](#google-cloud-estimativas)
+  - [Otimizações para Maximizar o Tempo](#-otimizações-para-maximizar-o-tempo)
+- [Segurança e Manutenção](#-segurança-e-manutenção)
+- [Operações Avançadas (AWS)](#-operações-avançadas-aws)
+  - [Como Expandir Volume](#como-expandir-volume-aws)
+  - [Como Atachar Volume EBS](#como-atachar-volume-ebs)
+- [Troubleshooting](#-troubleshooting)
+
+---
+
+# 🏗 Visão Geral e Arquitetura
+
+Este projeto utiliza **Docker Swarm** para orquestrar contêineres de forma resiliente e escalável, suportando tanto **AWS** quanto **Google Cloud**.
 
 ### Diagrama de Infraestrutura
 
 ```mermaid
 graph TD
-    User((Internet User)) -->|HTTPS/443| LB[Google Cloud Firewall/LB]
-    LB -->|TCP| Traefik
+    User((Internet User)) -->|HTTPS/443| CloudFW[Cloud Firewall]
+    CloudFW -->|TCP| Traefik
 
-    subgraph "VM 1 (Manager) - n8n & Core Infra"
-        Traefik[Traefik Proxy]
+    subgraph "Cluster Swarm (Manager Node)"
+        Traefik[Traefik Proxy v3]
         Portainer[Portainer CE]
         Postgres[(Postgres 16)]
         Redis[(Redis 7)]
@@ -26,20 +73,11 @@ graph TD
         EvoAPI[Evolution API]
     end
 
-    subgraph "VM 2 (Worker) - Dify AI Stack"
-        DifyWeb[Dify Frontend]
-        DifyAPI[Dify API]
-        DifyWork[Dify Worker]
-        DifySandbox[Dify Sandbox]
-    end
-
     %% Routing
     Traefik -->|Roteamento| n8nEd
     Traefik -->|Roteamento| n8nWH
     Traefik -->|Roteamento| EvoAPI
     Traefik -->|Roteamento| Portainer
-    Traefik -->|Overlay Network| DifyWeb
-    Traefik -->|Overlay Network| DifyAPI
 
     %% Connections
     n8nEd --> Postgres
@@ -49,12 +87,6 @@ graph TD
     EvoAPI --> Postgres
     EvoAPI --> Redis
 
-    DifyAPI -->|Overlay| Postgres
-    DifyAPI -->|Overlay| Redis
-    DifyWork -->|Overlay| Postgres
-    DifyWork -->|Overlay| Redis
-    DifyAPI --> DifySandbox
-
     style Traefik fill:#f9f,stroke:#333,stroke-width:2px
     style Postgres fill:#bbf,stroke:#333,stroke-width:2px
     style Redis fill:#bbf,stroke:#333,stroke-width:2px
@@ -62,246 +94,284 @@ graph TD
 
 ---
 
-## 💰 Estimativa de Orçamento (Google Cloud)
+# ☁ Preparação da Nuvem
 
-Configuração otimizada para **US-Central1 (Iowa)** ou **US-East1** (aprox. 30-40% mais barato que São Paulo), permitindo o dobro de memória RAM pelo mesmo custo.
+Escolha seu provedor de nuvem e siga os passos de preparação antes de rodar o script.
 
-| Item | Especificação | Recurso | Custo Mensal (Est.) |
-|------|---------------|---------|---------------------|
-| **VM 1 (n8n)** | `e2-standard-2` | 2 vCPU, 8GB RAM, 50GB Disk | ~$50.92 |
-| **VM 2 (Dify)** | `e2-standard-2` | 2 vCPU, 8GB RAM, 50GB Disk | ~$50.92 |
-| **Total** | | **16GB RAM / 100GB Disk** | **~$101.84 / mês** |
+## Opção A: Amazon AWS
 
-*Nota: O orçamento disponível cobre confortavelmente esta configuração por 3 meses.*
+### 1. Criar Bucket S3 (Para Backups e Evolution API)
+1. Acesse: [S3 Console](https://s3.console.aws.amazon.com/s3/)
+2. **Create bucket**:
+   - Nome: `alobexpress-storage-YOURNAME`
+   - Região: `us-east-1` (Recomendado)
+3. **Object Ownership**: `ACLs disabled` (Recomendado).
+4. **Block Public Access**: `Block all public access` (Mantenha tudo bloqueado!).
+5. **Encryption**: `SSE-S3`.
 
----
+![Bucket Config](/img/0.PNG)
 
-## 🛠️ Stack Tecnológica e Versões
+### 2. Criar Usuário IAM
+1. Acesse IAM > Users > Create user.
+2. Nome: `alobexpress-user`.
+3. Permissões (Attach policies directly): `AmazonS3FullAccess` (ou crie uma policy restrita ao bucket).
+4. **Crie Access Keys** (Security credentials > Create access key) e SALVE-AS.
 
-Todas as dependências foram atualizadas para versões estáveis (LTS) e compatíveis.
-
-| Serviço | Versão | Função | Scaling Strategy |
-|---------|--------|--------|------------------|
-| **Traefik** | `v3.6.4` | Reverse Proxy & Ingress | Global (1 por nó Manager) |
-| **Portainer** | `ce-2.33.5` | Gestão de Containers | Replicated (1) |
-| **PostgreSQL** | `16-alpine` | Banco de Dados Relacional | Replicated (1) + Volume Persistente |
-| **Redis** | `7-alpine` | Cache & Message Broker | Replicated (1) |
-| **n8n** | `2.0.2` | Workflow Automation | Híbrido (Editor: 1, Webhook: 2+, Worker: Auto) |
-| **Evolution API** | `v2.3.7` | WhatsApp Integration | Replicated (1+) |
-| **Dify** | `1.11.1` | LLM App Development | Microserviços (Web, API, Worker) |
-
----
-
-## ☁️ Requisitos de Infraestrutura (Google Cloud)
-
-Para garantir a compatibilidade e performance na GCP:
-
-1.  **Compute Engine (VMs):**
-    *   **Região Recomendada:** `us-central1` (Iowa).
-    *   **SO:** Debian GNU/Linux 12 (bookworm).
-    *   **VM 1 (Manager):** e2-standard-2 (2 vCPU, 8GB RAM).
-    *   **VM 2 (Worker):** e2-standard-2 (2 vCPU, 8GB RAM).
-    *   **Discos:** 50GB Disco de Inicialização (Boot Disk) por VM.
-    *   **Proteção de Dados:** Selecione **"Sem backups"** (economiza custos; faremos backup via aplicação).
-    *   **Rede (Network):**
-        *   **Firewall:** Marque ✅ **Permitir tráfego HTTP** e ✅ **Permitir tráfegos HTTPS**.
-        *   **Interface de Rede:** Mantenha a opção `default`.
-    *   **Nome do host (Hostname):**
-        *   VM 1: `manager-n8n.internal`
-        *   VM 2: `worker-dify.internal`
-        *   *Nota: O Google exige "dois rótulos" (algo.algo), por isso o sufixo `.internal`.*
-    *   **Observabilidade:**
-        *   **Agente de operações:** Deixe **desmarcado** (economiza RAM; usaremos Portainer para monitorar).
-        *   **Dispositivo de exibição:** Deixe **desmarcado**.
-    *   **Segurança:**
-        *   **Contas de serviço:** Mantenha o padrão (Compute Engine default service account).
-        *   **Escopos de acesso:** Mantenha "Permitir acesso padrão".
-        *   **VM protegida:** Mantenha os padrões (vTPM e Monitoramento de integridade marcados; Inicialização segura desmarcada).
-    *   **Avançado:**
-        *   **Proteção contra exclusão:** Recomendo marcar ✅ (evita apagar a VM sem querer).
-        *   **Automação (Script de inicialização):** Deixe em branco (vamos rodar manualmente).
-        *   **Outros:** Mantenha os padrões.
-    *   **⚠️ IMPORTANTE:** Na seção "Contêiner" (Container), mantenha a opção **"Implantar contêiner" DESMARCADA**. A instalação do Docker será feita manualmente via script.
-2.  **Firewall Rules (Avançado/VPC):**
-    *   *Automático:* Ao marcar HTTP/HTTPS acima, as portas 80/443 são liberadas.
-    *   *Interno:* A rede `default` do GCP geralmente já permite comunicação interna entre as VMs. Caso precise configurar manualmente: `2377` (TCP), `7946` (TCP/UDP), `4789` (UDP).
-3.  **Discos:**
-    *   SSD Persistente para volumes de banco de dados (`/var/lib/docker/volumes`).
+### 3. Criar Instância EC2
+1. **Imagem (AMI)**: `Ubuntu Server 22.04 LTS (HVM), SSD Volume Type` (x86).
+2. **Tipo**: `t3.small` (Recomendado: 2 vCPU, 2GB RAM). *t2.micro não suporta a stack completa.*
+3. **Key Pair**: Crie ou selecione uma chave `.pem`.
+4. **Network / Security Group**:
+   - Permitir **SSH (22)** do seu IP.
+   - Permitir **HTTP (80)** de 0.0.0.0/0.
+   - Permitir **HTTPS (443)** de 0.0.0.0/0.
+5. **Storage**: 30GB gp3.
+6. **Elastic IP**: Aloque e associe um IP Elástico à instância (Crucial para não perder o IP no reboot).
 
 ---
 
-## 🚀 Guia de Deploy Passo-a-Passo
+## Opção B: Google Cloud Platform (GCP)
 
-### 1. Preparação do Ambiente
-Execute os scripts de configuração inicial na raiz do nó Manager.
+### 1. Criar Compute Engine (VM)
+1. **Região**: `us-central1` (Iowa) ou `us-east1`.
+2. **Máquina**: `e2-standard-2` (2 vCPU, 8GB RAM).
+3. **Disco de Inicialização**:
+   - Imagem: `Debian GNU/Linux 12 (bookworm)` ou `Ubuntu 22.04 LTS`.
+   - Tamanho: 50GB SSD Persistente.
+4. **Firewall**:
+   - ✅ Permitir tráfego HTTP.
+   - ✅ Permitir tráfego HTTPS.
+5. **Proteção**: Marque "Ativar proteção contra exclusão".
 
-1.  Acesse a **VM 1 (Manager)** via SSH.
-2.  Execute os comandos abaixo para baixar o repositório e instalar o Docker:
+---
 
+# 🚀 Instalação Automatizada
+
+O script unificado `setup_alobexpress.sh` detecta e configura o ambiente para ambos os provedores.
+
+### 1. Conectar na VM
 ```bash
-# 1. Tornar-se root e atualizar o sistema
-sudo -i
-apt-get update && apt-get upgrade -y
+# AWS
+ssh -i "sua-chave.pem" ubuntu@seu-ip-publico
 
-# 2. Instalar Git para baixar nosso projeto
-apt-get install -y git
-
-# 3. Baixar nosso repositório com todos os scripts
-git clone https://github.com/ALOBEXPRESS/infraestructure-alobexpress.git /root/infra
-
-# 4. Entrar na pasta e dar permissão aos scripts
-cd /root/infra
-chmod +x 01.setup-docker.sh 02.setup-swarm.sh
-
-# 5. Instalar Docker e Dependências
-./01.setup-docker.sh
-
-# 6. Inicializar o Swarm e criar redes (network_swarm_public)
-./02.setup-swarm.sh
+# GCP (via Console ou Terminal)
+gcloud compute ssh --zone "us-central1-a" "nome-da-vm"
 ```
 
-### 1.1 Configuração Multi-VM (Separação de Workloads)
-**CRÍTICO:** Para que a separação funcione conforme o diagrama, você DEVE aplicar as labels nos nós:
+### 2. Baixar e Preparar o Script
+Se você ainda não tem os arquivos na máquina:
 
 ```bash
-# 1. Identifique os IDs/Hostnames
-docker node ls
+# Clone o repositório (exemplo) ou faça upload via SCP
+# scp -i chave.pem setup_alobexpress.sh ubuntu@IP:/home/ubuntu/
 
-# 2. Na VM 1 (Manager) - Onde rodará n8n e Evolution
-docker node update --label-add app=n8n <HOSTNAME_VM_1>
-
-# 3. Na VM 2 (Worker) - Onde rodará Dify
-docker node update --label-add app=dify <HOSTNAME_VM_2>
+# Dar permissão de execução
+chmod +x setup_alobexpress.sh
 ```
 
-### 2. Deploy da Camada de Infraestrutura Base
-Ordem crítica de inicialização para garantir disponibilidade de banco e proxy.
-
+### 3. Executar o Setup
 ```bash
-# 1. Proxy Reverso (Traefik)
-docker stack deploy -c 04.traefik.yaml traefik
-
-# 2. Gestão (Portainer)
-docker stack deploy -c 05.portainer.yaml portainer
-
-# 3. Bancos de Dados (Aguardar 30s após deploy para inicialização)
-docker stack deploy -c 06.postgres.yaml database
-docker stack deploy -c 07.redis.yaml cache
+sudo ./setup_alobexpress.sh
 ```
 
-### 3. Deploy das Aplicações de Negócio
+### 4. Siga o Menu Interativo
+O script perguntará:
+1. **Tipo de Nuvem**: `[1] AWS` ou `[2] Google Cloud`.
+2. **Confirmação de DNS**: Você já deve ter apontado os domínios (veja seção abaixo).
+3. **Credenciais** (Se AWS): Access Key, Secret Key, Bucket, Região.
+4. **Domínios e Senhas**: Defina os domínios para Portainer, N8N e senhas de banco.
 
-**Automação (n8n & Evolution):**
-O n8n está configurado em modo fila (Queue Mode) para alta performance.
-```bash
-# Editor (Interface)
-docker stack deploy -c 08.n8n-editor.yaml n8n_editor
+---
 
-# Workers (Processamento Pesado)
-docker stack deploy -c 09.n8n-workers.yaml n8n_worker
+# ⚙ Pós-Instalação e Configuração
 
-# Webhooks (Alta Concorrência HTTP)
-docker stack deploy -c 10.n8n-webhooks.yaml n8n_webhook
+## DNS (Cloudflare)
+Configure seus apontamentos DNS no Cloudflare apontando para o **IP Público** da sua VM.
+**Use "DNS Only" (Nuvem Cinza) inicialmente para garantir a geração dos certificados SSL.**
 
-# Evolution API (WhatsApp)
-docker stack deploy -c 16.evolution_v2.yml evolution
-```
+| Tipo | Nome | Conteúdo | Proxy Status |
+|------|------|----------|--------------|
+| A | `painel` | SEU_IP_PUBLICO | DNS Only |
+| A | `editor` | SEU_IP_PUBLICO | DNS Only |
+| A | `webhook` | SEU_IP_PUBLICO | DNS Only |
 
-**Inteligência Artificial (Dify):**
-Stack completa de GenAI.
-```bash
-# Sandbox de Execução de Código
-docker stack deploy -c 12-dify-sandbox.yaml dify_sandbox
+*Após os certificados serem gerados e tudo estar verde (HTTPS), você pode ativar o Proxy (Nuvem Laranja) se usar SSL Full (Strict).*
 
-# Interface Web
-docker stack deploy -c 13-dify-web.yaml dify_web
+## Criar Banco de Dados N8N (Obrigatório)
+O N8N precisa que o banco de dados seja criado manualmente no primeiro uso.
 
-# API Core
-docker stack deploy -c 14-dify-api.yaml dify_api
+1. Acesse o **Portainer** (`https://painel.seu-dominio.com`).
+2. Vá em **Containers**.
+3. Encontre o container do Postgres (`postgres` ou `database_postgres`).
+4. Clique no ícone **>_ Console** > **Connect**.
+5. Execute:
+   ```sql
+   CREATE DATABASE n8n;
+   ```
+   *(Se retornar sucesso, pode fechar).*
+6. Reinicie os serviços do N8N no Portainer se necessário.
 
-# Processamento em Background
-docker stack deploy -c 15-dify-worker.yaml dify_worker
+## 🛡️ Configurar CORS (para Evolution API)
+Se você estiver usando S3 com Evolution API, configure o CORS no console da AWS:
+
+1. Aba **Permissions → CORS**
+2. Clique **Edit** e cole:
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+    "AllowedOrigins": [
+      "https://evolution.seudominio.com.br",
+      "https://n8n.seudominio.com.br"
+    ],
+    "ExposeHeaders": ["ETag", "x-amz-request-id"],
+    "MaxAgeSeconds": 3600
+  }
+]
 ```
 
 ---
 
-## ⚠️ Plano de Atualização Sequencial (Major Version Upgrade)
+# 🛠 Stack Tecnológica
 
-Use este procedimento para atualizar sua infraestrutura existente para as novas versões (Traefik v3, n8n v2, Dify v1.11).
+| Serviço | Versão | Função | Scaling |
+|---------|--------|--------|---------|
+| **Traefik** | `v3.6.4` | Reverse Proxy & SSL | Global |
+| **Portainer** | `2.33.5` | Gestão de Containers | Manager |
+| **PostgreSQL** | `16-alpine` | Banco de Dados | 1 Réplica |
+| **Redis** | `7-alpine` | Cache & Filas | 1 Réplica |
+| **n8n** | `2.0.2` | Automação (Queue Mode) | Scalable Workers |
 
-### 1. Backup Preventivo
-Antes de iniciar, faça backup dos volumes de banco de dados.
+---
+
+# 💰 Custos e Otimização
+
+## AWS (Free Tier & Projeções)
+
+### Free Tier (12 Meses)
+*   **EC2**: 750h/mês de `t2.micro` ou `t3.micro` (Cuidado: Micro tem pouca RAM para essa stack. Recomendamos `t3.small` mesmo pagando).
+*   **S3**: 5GB Standard.
+*   **EBS**: 30GB.
+
+![Custos Reais no Free Tier](/img/2.PNG)
+
+### Custo Real Estimado (`t3.small`)
+*   **EC2 (t3.small)**: ~$15-20/mês.
+*   **EBS (30GB)**: ~$3/mês.
+*   **Total**: ~$23/mês.
+
+![Projeção de Custo Real](/img/3.PNG)
+
+## Google Cloud (Estimativas)
+
+*   **VM (e2-standard-2)**: 2 vCPU, 8GB RAM.
+*   **Custo**: ~$50/mês (por VM).
+*   **Vantagem**: Muito mais RAM (8GB vs 2GB da AWS t3.small), ideal para rodar IA (Dify) junto com N8N.
+
+## 🔧 Otimizações para Maximizar o Tempo
+
+### 1. Reduzir Custos de S3 ($1.04/mês → $0.30/mês)
+Configure Lifecycle Policy para mover arquivos antigos para Glacier.
+
 ```bash
-# Exemplo de backup do Postgres
-docker exec $(docker ps -q -f name=database_postgres) pg_dumpall -U postgres > backup_full_$(date +%F).sql
+aws s3api put-bucket-lifecycle-configuration \
+  --bucket seu-bucket \
+  --lifecycle-configuration '{
+    "Rules": [{
+      "Id": "DeleteOldMedia",
+      "Status": "Enabled",
+      "Filter": {"Prefix": "evolution/"},
+      "Transitions": [{"Days": 30, "StorageClass": "GLACIER_IR"}],
+      "Expiration": {"Days": 90}
+    }]
+  }'
 ```
 
-### 2. Atualização da Infraestrutura (Traefik v3 & Portainer)
-O Traefik v3 possui mudanças na configuração do Provider Swarm.
-```bash
-# 1. Atualizar Traefik (Pode haver breve interrupção no roteamento)
-docker stack deploy -c 04.traefik.yaml traefik
+![Lifecycle Policy](/img/4.PNG)
 
-# 2. Atualizar Portainer
-docker stack deploy -c 05.portainer.yaml portainer
-```
+### 2. Otimizar N8N para Poupar RAM
+Adicione ao seu arquivo YAML do N8N:
 
-### 3. Atualização das Aplicações
-```bash
-# 1. Atualizar Evolution API
-docker stack deploy -c 16.evolution_v2.yml evolution
-
-# 2. Atualizar n8n (v2)
-docker stack deploy -c 08.n8n-editor.yaml n8n_editor
-docker stack deploy -c 09.n8n-workers.yaml n8n_worker
-docker stack deploy -c 10.n8n-webhooks.yaml n8n_webhook
-
-# 3. Atualizar Dify (v1.11)
-# Recomendado reiniciar a stack completa para garantir migrações de banco
-docker stack rm dify_api dify_web dify_worker dify_sandbox
-# Aguarde os serviços pararem...
-docker stack deploy -c 12-dify-sandbox.yaml dify_sandbox
-docker stack deploy -c 14-dify-api.yaml dify_api
-docker stack deploy -c 13-dify-web.yaml dify_web
-docker stack deploy -c 15-dify-worker.yaml dify_worker
+```yaml
+environment:
+  - EXECUTIONS_PROCESS=main
+  - N8N_PAYLOAD_SIZE_MAX=16
+  - EXECUTIONS_DATA_PRUNE=true
+  - EXECUTIONS_DATA_MAX_AGE=72
+deploy:
+  resources:
+    limits:
+      memory: 800M
 ```
 
 ---
 
-## ⚡ Otimizações e Melhores Práticas Implementadas
+# 🛡 Segurança e Manutenção
 
-### 1. n8n (Queue Mode)
-*   **Separação de Responsabilidades:** O tráfego de webhooks não impacta o editor nem o processamento de workflows longos.
-*   **Escalabilidade:** Para aumentar a capacidade de processamento, basta escalar os workers:
-    ```bash
-    docker service scale n8n_worker_worker=5
-    ```
-
-### 2. Dify (High Availability)
-*   **Worker Dedicado:** Tarefas assíncronas (RAG, Indexação) são processadas separadamente da API principal via Celery/Redis.
-*   **Sandbox Isolado:** Execução de código Python/NodeJS isolada para segurança.
-
-### 3. Segurança & Manutenção
-*   **Redes Isoladas:** O tráfego de banco de dados (`network_swarm_db` implícita ou interna) não é exposto publicamente. Apenas serviços com `network_swarm_public` falam com o Traefik.
-*   **Constraints de Deploy:** Serviços críticos (Bancos) fixados em nós Managers ou com volumes persistentes garantidos.
-*   **Resource Limits:** Todos os serviços possuem limites de CPU e RAM definidos para evitar "Noisy Neighbor" nas VMs.
+1. **Firewall**: Mantenha aberto apenas portas 80, 443 e 22 (restrinja o 22 ao seu IP se possível).
+2. **Backups**:
+   - O script AWS configura backup automático de mídias para o S3.
+   - Para banco de dados, configure um cronjob de dump:
+     ```bash
+     docker exec $(docker ps -q -f name=postgres) pg_dumpall -U postgres > backup_$(date +%F).sql
+     ```
+3. **Atualizações**:
+   - Para atualizar o N8N, edite o arquivo `09.n8n-workers.yaml` (e outros), mude a tag da imagem e rode `docker stack deploy ...` novamente.
 
 ---
 
-## 🛡️ Checklist de Segurança e Manutenção
+# 🛠 Operações Avançadas (AWS)
 
-- [ ] **Backup Diário:** Configurar cronjob para dump do Postgres (`pg_dump`) e backup do volume do n8n (`/home/node/.n8n`).
-- [ ] **Monitoramento:** Verificar logs regularmente via Portainer ou configurar stack ELK/Prometheus.
-- [ ] **Limpeza:** Executar semanalmente para remover imagens não utilizadas:
-    ```bash
-    docker system prune -af
-    ```
+## Como Expandir Volume AWS
 
-## 🆘 Recuperação de Desastres
+1. No Console AWS > Volumes > Modify Volume > Aumente o tamanho.
+2. Na VM:
+   ```bash
+   # Listar discos
+   lsblk
+   
+   # Expandir partição
+   sudo growpart /dev/nvme0n1 1
+   
+   # Redimensionar sistema de arquivos
+   sudo resize2fs /dev/nvme0n1p1
+   ```
 
-Em caso de falha total de um nó:
-1.  Provisione nova VM.
-2.  Execute `01.setup-docker.sh`.
-3.  Se for Manager: Restaure o backup do diretório `/var/lib/docker/volumes`.
-4.  Se for Worker: Apenas junte-o ao cluster (`docker swarm join ...`).
-5.  O Swarm automaticamente redistribuirá as tarefas (tasks) para o novo nó.
+## Como Atachar Volume EBS
+Se você precisar de um segundo disco (`/data`):
+
+1. Crie o volume na mesma Zona de Disponibilidade (AZ).
+2. Attach volume à instância.
+3. Na VM:
+   ```bash
+   # Formatar (apenas se for novo!)
+   sudo mkfs -t ext4 /dev/xvdf
+
+   # Montar
+   sudo mkdir /data
+   sudo mount /dev/xvdf /data
+   
+   # Persistir no fstab (Cuidado!)
+   # UUID=... /data ext4 defaults,nofail 0 2
+   ```
+
+---
+
+# 🚨 Troubleshooting
+
+### "Unable to locate credentials" (AWS)
+Execute `aws configure` e reinsira suas chaves, ou verifique se o arquivo `~/.aws/credentials` existe.
+
+### Erro de Banco de Dados no N8N
+Verifique se você criou o banco `n8n` manualmente (passo "Criar Banco de Dados N8N"). O N8N não cria o DB sozinho, apenas as tabelas.
+
+### Certificado SSL Inválido
+Verifique se seus domínios no Cloudflare estão como "DNS Only" (Cinza). O Traefik precisa resolver o IP real para gerar o certificado Let's Encrypt.
+
+---
+
+> **Nota**: Este projeto unifica as melhores práticas de versões anteriores. Para detalhes legados, consulte o histórico do repositório.
+
+![Diferença Versões](/img/5.PNG)

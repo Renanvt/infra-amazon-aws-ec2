@@ -3,7 +3,7 @@ services:
   # Definição do Serviço do Redis
   redis:
     # imagem do redis
-    image: redis:7
+    image: redis:8.4.0
     # Define o hostname do container
     hostname: "{{.Service.Name}}.{{.Task.Slot}}"
     # Define o comando de inicialização do serviço
