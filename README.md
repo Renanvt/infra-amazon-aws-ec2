@@ -47,6 +47,7 @@
 - [Operações Avançadas (AWS)](#-operações-avançadas-aws)
   - [Como Expandir Volume](#como-expandir-volume-aws)
   - [Como Atachar Volume EBS](#como-atachar-volume-ebs)
+- [Instalação Standalone do Dify (Híbrido)](#-instalação-standalone-do-dify-híbrido)
 - [Troubleshooting](#-troubleshooting)
 
 ---
@@ -158,19 +159,22 @@ ssh -i "sua-chave.pem" ubuntu@seu-ip-publico
 gcloud compute ssh --zone "us-central1-a" "nome-da-vm"
 ```
 
-### 2. Baixar e Preparar o Script
-Se você ainda não tem os arquivos na máquina:
+### 2. Instalação Rápida (Recomendado)
+Execute o comando abaixo para baixar e iniciar a instalação automaticamente:
 
 ```bash
-# Clone o repositório (exemplo) ou faça upload via SCP
-# scp -i chave.pem setup_alobexpress.sh ubuntu@IP:/home/ubuntu/
-
-# Dar permissão de execução
-chmod +x setup_alobexpress.sh
+curl -sL https://setup.alobexpress.com.br/setup_alobexpress.sh | sudo bash
 ```
 
-### 3. Executar o Setup
+### 3. Instalação Manual (Alternativa)
+Se preferir fazer upload do arquivo manualmente:
+
 ```bash
+# Upload via SCP (Exemplo AWS)
+scp -i "sua-chave.pem" setup_alobexpress.sh ubuntu@SEU_IP_PUBLICO:/home/ubuntu/
+
+# Dar permissão e executar
+chmod +x setup_alobexpress.sh
 sudo ./setup_alobexpress.sh
 ```
 
@@ -356,6 +360,67 @@ Se você precisar de um segundo disco (`/data`):
    # Persistir no fstab (Cuidado!)
    # UUID=... /data ext4 defaults,nofail 0 2
    ```
+
+---
+
+# 🤖 Instalação Standalone do Dify (Híbrido)
+
+Para rodar o Dify em uma VM separada (Híbrido: AWS <-> GCP), siga este guia específico.
+
+### 1. Preparação da VM (AWS ou GCP)
+
+Crie uma **nova VM** dedicada para o Dify com os seguintes requisitos mínimos:
+
+*   **CPU**: 2 vCPU (Mínimo Absoluto)
+*   **RAM**: 4GB RAM (Recomendado 8GB para modelos pesados)
+*   **OS**: Ubuntu 22.04 LTS
+
+#### Configuração de Segurança (Firewall/Security Group)
+Antes de rodar o script, configure as regras de entrada (Inbound) no painel da sua Cloud:
+
+| Porta | Protocolo | Origem | Descrição |
+|-------|-----------|--------|-----------|
+| **22** | TCP | Seu IP | Acesso SSH |
+| **80** | TCP | 0.0.0.0/0 | Redirecionamento HTTP |
+| **443** | TCP | 0.0.0.0/0 | Acesso HTTPS Seguro |
+| **5001**| TCP | IP da VM N8n | API do Dify (Restrito ao N8n) |
+| **9001**| TCP | IP da VM N8n | Portainer Agent (Opcional) |
+
+### 2. Instalação
+
+1. Conecte-se via SSH na **Nova VM** (Dify):
+   ```bash
+   ssh ubuntu@IP-DA-NOVA-VM
+   ```
+
+2. Instalação (Via Curl):
+   ```bash
+   # Execute diretamente na VM:
+   curl -sL https://setup.alobexpress.com.br/setup_dify.sh | sudo bash
+   ```
+   
+   *Ou manualmente via SCP:*
+   ```bash
+   scp setup_dify.sh ubuntu@IP-DA-NOVA-VM:/home/ubuntu/
+   chmod +x setup_dify.sh
+   sudo ./setup_dify.sh
+   ```
+
+3. **Siga o Assistente**:
+   *   O script pedirá o **IP da sua VM Principal (N8n)**.
+   *   Ele verificará a conectividade.
+   *   Ao final, ele gerará um **"Guia de Conectividade Híbrida"** personalizado.
+
+### 3. Conectividade Híbrida (AWS <-> GCP)
+
+Se você estiver rodando em nuvens diferentes (ex: Dify na AWS e N8n na GCP), o script instruirá você a criar regras de "Handshake" (Aperto de mão):
+
+1.  **Na AWS (Onde está o Dify)**:
+    *   Libere a porta `5001` apenas para o IP da GCP.
+2.  **Na GCP (Onde está o N8n)**:
+    *   Libere a porta `5678` (Webhook) apenas para o IP da AWS.
+
+*Isso garante que suas automações conversem entre si sem expor as APIs para a internet pública.*
 
 ---
 
