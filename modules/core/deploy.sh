@@ -111,6 +111,12 @@ deploy_services() {
 }
 
 print_summary() {
+    # Validação dos Serviços
+    print_step "VALIDANDO SERVIÇOS (DOCKER SWARM)"
+    echo -e "${CYAN}Verificando status dos serviços...${RESET}"
+    docker service ls --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+    echo ""
+
     # Resumo Final
     print_step "SETUP CONCLUÍDO!"
     if [ "$IS_AWS" = true ]; then
@@ -133,8 +139,8 @@ print_summary() {
     fi
 
     echo ""
-    echo -e "${YELLOW}⚠️  Configure sua senha de administrador no Portainer imediatamente!${RESET}"
-    echo -e "   Link direto: https://${PORTAINER_DOMAIN}"
+    echo -e "${YELLOW}⚠️  ATENÇÃO: Você tem 5 MINUTOS para criar a senha de admin no Portainer!${RESET}"
+    echo -e "   Acesse agora: https://${PORTAINER_DOMAIN}"
     echo ""
     echo -e "${BOLD}${MAGENTA}🔒 CREDENCIAIS GERADAS (SALVE AGORA!):${RESET}"
     echo -e "   ${WHITE}Postgres Password:${RESET} ${POSTGRES_PASSWORD}"
@@ -155,6 +161,7 @@ print_summary() {
     
     if [ "$ENABLE_DIFY" = true ]; then
         # setup_dify_resource_monitor # Function not found in original script
-        print_warning "setup_dify_resource_monitor skipped (not found)"
+        # print_warning "setup_dify_resource_monitor skipped (not found)"
+        :
     fi
 }

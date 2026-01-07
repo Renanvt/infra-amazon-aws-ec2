@@ -1,6 +1,8 @@
 #!/bin/bash
 
 setup_evolution_vars() {
+    print_banner
+    print_step "CONFIGURAÇÕES EVOLUTION"
     confirm_input "${CYAN} Domínio Evolution API (ex: api.meudominio.com): ${RESET}" "Evolution API será:" EVOLUTION_DOMAIN
     confirm_input "${CYAN}🔑 API Key Global (Evolution): ${RESET}" "Evolution Key:" EVOLUTION_API_KEY
 

@@ -1,16 +1,18 @@
 #!/bin/bash
 
 setup_core_vars() {
+    print_banner
     print_step "PASSO 2: DEPLOY DOS SERVIÇOS - CONFIGURAÇÃO"
     
+    print_step "CONFIGURAÇÃO PORTAINER E TRAEFIK"
     confirm_input "${CYAN}📧 E-mail para SSL (Traefik): ${RESET}" "E-mail SSL:" TRAEFIK_EMAIL
-
-    print_step "PASSO 3: DOMÍNIOS E CREDENCIAIS"
 
     # Domínios Core
     confirm_input "${CYAN} Domínio Portainer (ex: painel.meudominio.com): ${RESET}" "Portainer será:" PORTAINER_DOMAIN
     confirm_input "${CYAN}🌐 Domínio RabbitMQ (ex: rabbit.meudominio.com): ${RESET}" "RabbitMQ será:" RABBITMQ_DOMAIN
 
+    print_banner
+    print_step "CONFIGURAÇÕES DE BANCO DE DADOS"
     # Senhas Core
     confirm_input "${CYAN} Senha para Banco de Dados (Postgres): ${RESET}" "Senha Postgres:" POSTGRES_PASSWORD
     confirm_input "${CYAN}🔑 Senha para Redis: ${RESET}" "Senha Redis:" REDIS_PASSWORD

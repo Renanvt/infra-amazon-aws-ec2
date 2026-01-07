@@ -139,6 +139,7 @@ setup_evolution_vars
 setup_dify_vars
 
 # 7. Resource Definition
+print_banner
 define_resources
 
 # 8. Checkpoint

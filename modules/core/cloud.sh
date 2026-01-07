@@ -71,6 +71,7 @@ setup_gcp() {
 
     CLOUD_PROVIDER="gcp"
 
+    print_banner
     print_step "PREPARANDO AMBIENTE GCP"
     print_warning "Esse processo pode demorar de 5 a 15 minutos, NÃO CANCELE!"
     {

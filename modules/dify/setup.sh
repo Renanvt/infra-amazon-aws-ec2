@@ -1,7 +1,8 @@
 #!/bin/bash
 
 setup_dify_vars() {
-    print_step "CONFIGURAÇÃO DIFY AI"
+    print_banner
+    print_step "CONFIGURAÇÕES DIFY / AMAZON S3"
     echo -e "   ${YELLOW}O Dify requer MÍNIMO de 2 vCPU e 2GB RAM adicionais.${RESET}"
     echo -e "   ${YELLOW}Considerando N8N, Evolution, Postgres, Redis e RabbitMQ, sua VM deve ter:${RESET}"
     echo -e "   ${BOLD}➜ Recomendado: 4 vCPU e 8GB RAM (ou mais)${RESET}"
@@ -53,7 +54,7 @@ setup_dify_vars() {
                     DIFY_ENABLE_S3=true
                     confirm_input "${CYAN}🪣 Nome do Bucket S3 (Dify): ${RESET}" "Bucket:" DIFY_S3_BUCKET
                     confirm_input "${CYAN}🌍 Região S3: ${RESET}" "Região:" DIFY_S3_REGION
-                    confirm_input "${CYAN}🔗 Endpoint S3 (ex: https://...): ${RESET}" "Endpoint:" DIFY_S3_ENDPOINT
+                    confirm_input "${CYAN}🔗 Endpoint S3 (ex: https://s3.amazonaws.com): ${RESET}" "Endpoint:" DIFY_S3_ENDPOINT
                     confirm_input "${CYAN}🗝️ Access Key: ${RESET}" "Access Key:" DIFY_S3_ACCESS_KEY
                     confirm_input "${CYAN} 🔒 Secret Access Key: ${RESET}" "Secret Key:" DIFY_S3_SECRET_KEY
                  else
@@ -67,7 +68,7 @@ setup_dify_vars() {
                 DIFY_ENABLE_S3=true
                 confirm_input "${CYAN}🪣 Nome do Bucket S3 (Dify): ${RESET}" "Bucket:" DIFY_S3_BUCKET
                 confirm_input "${CYAN}🌍 Região S3: ${RESET}" "Região:" DIFY_S3_REGION
-                confirm_input "${CYAN}🔗 Endpoint S3 (ex: https://...): ${RESET}" "Endpoint:" DIFY_S3_ENDPOINT
+                confirm_input "${CYAN}🔗 Endpoint S3 (ex: https://s3.amazonaws.com): ${RESET}" "Endpoint:" DIFY_S3_ENDPOINT
                 confirm_input "${CYAN}🗝️ Access Key ID: ${RESET}" "Access Key:" DIFY_S3_ACCESS_KEY
                 confirm_input "${CYAN} 🔒 Secret Access Key: ${RESET}" "Secret Key:" DIFY_S3_SECRET_KEY
              else

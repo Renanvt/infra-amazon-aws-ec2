@@ -31,7 +31,8 @@ setup_swarm_architecture() {
 
 verify_dns() {
     # Aviso DNS Cloudflare
-    print_step "VERIFICAÇÃO DE DNS (CLOUDFLARE)"
+    print_banner
+    print_step "PASSO 1: VERIFICAÇÃO DE DNS (CLOUDFLARE)"
     echo -e "${YELLOW}Antes de continuar, certifique-se de que os apontamentos DNS foram feitos:${RESET}"
     echo -e "Exemplo de configuração (substitua '${BOLD}meu-dominio.com.br${RESET}' pelo seu):"
     echo -e ""
@@ -54,4 +55,5 @@ verify_dns() {
         print_error "Configure o DNS e execute novamente."
         exit 0
     fi
+    print_banner
 }

@@ -1,6 +1,8 @@
 #!/bin/bash
 
 setup_n8n_vars() {
+    print_banner
+    print_step "CONFIGURAÇÕES N8N"
     confirm_input "${CYAN}🌐 Domínio N8N Editor (ex: editor.meudominio.com): ${RESET}" "N8N Editor será:" N8N_EDITOR_DOMAIN
     confirm_input "${CYAN}🌐 Domínio N8N Webhook (ex: webhook.meudominio.com): ${RESET}" "N8N Webhook será:" N8N_WEBHOOK_DOMAIN
     confirm_input "${CYAN}🔑 Chave de Encriptação N8N: ${RESET}" "N8N Key:" N8N_ENCRYPTION_KEY
